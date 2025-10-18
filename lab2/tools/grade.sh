@@ -370,6 +370,17 @@ quick_check 'check_best_fit'                                       \
     'satp physical address: 0x0000000080204000'                      \
 
 # pts=5
+# quick_check 'check physical_memory_map_information'                                         \
+#     'memory management: buddy_pmm_manager'                     \
+#     '  memory: 0x0000000008000000, [0x0000000080000000, 0x0000000087ffffff].'                                  \
+
+# pts=20
+# quick_check 'check_buddy_system'                                       \
+#     'check_alloc_page() succeeded!'                                  \
+#     'satp virtual address: 0xffffffffc0204000'                       \
+#     'satp physical address: 0x0000000080204000'                      \
+
+# pts=5
 # quick_check 'check ticks'                                       \
 #    '++ setup timer interrupts'                                 \
 #    '100 ticks'                                                 \
