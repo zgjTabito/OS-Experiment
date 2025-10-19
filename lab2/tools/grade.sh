@@ -377,8 +377,6 @@ quick_check 'check_best_fit'                                       \
 # pts=20
 # quick_check 'check_buddy_system'                                       \
 #     'check_alloc_page() succeeded!'                                  \
-#     'satp virtual address: 0xffffffffc0204000'                       \
-#     'satp physical address: 0x0000000080204000'                      \
 
 # pts=5
 # quick_check 'check ticks'                                       \

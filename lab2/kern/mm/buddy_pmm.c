@@ -103,7 +103,6 @@ static void buddy_init_memmap(struct Page *base, size_t n) {
         buddy_area.base = base;
         buddy_area.npages = n;
     } else {
-        // 简单起见：不支持多段拼接（实验里 page_init 仅调用一次）
         assert(base == buddy_area.base && n == buddy_area.npages);
     }
 
@@ -230,50 +229,92 @@ static void buddy_free_pages(struct Page *base, size_t n) {
 
 static size_t buddy_nr_free_pages(void) { return NR_FREE; }
 
-// 简单一致性自检：分配/释放后空闲页总数应恢复
-static void buddy_check(void) {
-    size_t before = buddy_nr_free_pages();
 
-    // 分配并释放不同大小的内存块
+// 遍历所有阶，校验空闲链表基本不变式并返回空闲页总数
+static size_t scan_free_and_check(void) {
+    size_t sum = 0;
+    for (unsigned o = 0; o <= BUDDY_MAX_ORDER; o++) {
+        list_entry_t *head = &FL(o), *le = head;
+        while ((le = list_next(le)) != head) {
+            struct Page *p = le2page(le, page_link);
+            assert(in_managed_range(p));
+            assert(!PageReserved(p));
+            assert(PageProperty(p));
+            assert(p->property == order2size(o));
+            sum += p->property;
+        }
+    }
+    return sum;
+}
+
+static void check_pages_range_and_flags(struct Page *p, size_t n) {
+    assert(in_managed_range(p));
+    assert(in_managed_range(p + n - 1));
+    for (size_t i = 0; i < n; i++) {
+        struct Page *pg = p + i;
+        assert(PageReserved(pg));
+        assert(!PageProperty(pg));
+        assert(page_ref(pg) == 0);
+    }
+}
+
+// 简单一致性自检：分配/释放后空闲页总数应恢复，链表不变式成立
+static void buddy_check(void) {
+    // 空闲链表初始化/状态检查 + 空闲页计数检查
+    size_t before_sum = scan_free_and_check();
+    assert(before_sum == NR_FREE);
+
+    // 页面分配
     struct Page *a = alloc_pages(1);
     struct Page *b = alloc_pages(2);
     struct Page *c = alloc_pages(3);
     struct Page *d = alloc_pages(5);
-    assert(a != NULL && b != NULL && c != NULL && d != NULL);
+    assert(a && b && c && d);
 
+    // 页面地址检查 + 地址范围检查 + 引用计数 + 属性检查
+    check_pages_range_and_flags(a, a->property ? a->property : order2size(size2order_ceil(1)));
+    check_pages_range_and_flags(b, b->property ? b->property : order2size(size2order_ceil(2)));
+    check_pages_range_and_flags(c, c->property ? c->property : order2size(size2order_ceil(3)));
+    check_pages_range_and_flags(d, d->property ? d->property : order2size(size2order_ceil(5)));
+
+    // 分配后空闲页面计数状态检查 + 空闲链表状态检查
+    size_t after_alloc_sum = scan_free_and_check();
+    size_t consumed = (a->property ? a->property : order2size(size2order_ceil(1)))
+                    + (b->property ? b->property : order2size(size2order_ceil(2)))
+                    + (c->property ? c->property : order2size(size2order_ceil(3)))
+                    + (d->property ? d->property : order2size(size2order_ceil(5)));
+    assert(before_sum == after_alloc_sum + consumed);
+    assert(NR_FREE == after_alloc_sum);
+
+    // 释放页面检查（释放后应合并、计数恢复）
     free_pages(a, 1);
     free_pages(b, 2);
     free_pages(c, 3);
     free_pages(d, 5);
 
-    // 检查空闲页总数是否恢复
-    assert(buddy_nr_free_pages() == before);
+    size_t after_free_sum = scan_free_and_check();
+    assert(after_free_sum == before_sum);
+    assert(NR_FREE == before_sum);
 
-    // 再做一次 8 页分配/释放，考察高阶拆分与回收
+    // 内存分配失败检查
+    struct Page *too = alloc_pages(buddy_area.npages + 1);
+    assert(too == NULL);
+
+    // 多页分配检查 + 页面合并和释放检查
     struct Page *e = alloc_pages(8);
-    assert(e != NULL);
+    assert(e);
+    check_pages_range_and_flags(e, e->property ? e->property : 8);
     free_pages(e, 8);
-    assert(buddy_nr_free_pages() == before);
+    assert(scan_free_and_check() == before_sum);
 
-    // 测试更多大小的内存块分配与释放
-    struct Page *f = alloc_pages(6);  // 8页块的一部分
-    struct Page *g = alloc_pages(7);  // 8页块的一部分
-    assert(f != NULL && g != NULL);
-
-    // 分配了两个小块后，检查是否正确合并回 8 页块
+    // 再次分配页面检查 + 释放后检查空闲链表 + 空闲页面链表状态恢复
+    struct Page *f = alloc_pages(6);
+    struct Page *g = alloc_pages(7);
+    assert(f && g);
     free_pages(f, 6);
     free_pages(g, 7);
-
-    // 确保 6 页和 7 页被释放后，空闲链表正确合并
-    assert(buddy_nr_free_pages() == before);
-
-    // 其他大小块分配与释放
-    struct Page *h = alloc_pages(15);  // 16页的一部分
-    assert(h != NULL);
-    free_pages(h, 15);
-    assert(buddy_nr_free_pages() == before);
-
-    // 8 页块与 15 页块释放后，确保空闲链表恢复正常
+    assert(scan_free_and_check() == before_sum);
+    assert(NR_FREE == before_sum);
 }
 
 
