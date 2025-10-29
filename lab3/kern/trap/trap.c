@@ -191,24 +191,18 @@ void exception_handler(struct trapframe *tf) {
             cprintf("Illegal instruction caught at 0x%08x\n", tf->epc);
             cprintf("Exception type:Illegal instruction\n");
             /* 根据低两位判断是否为 16-bit compressed 指令，调整 epc */
-            {
-                uint16_t first_half = *(uint16_t *)tf->epc;
-                tf->epc += 4;
-            }
+            tf->epc += 4;
             break;
         case CAUSE_BREAKPOINT:
             //断点异常处理
-            /* LAB3 CHALLLENGE3   2313725 :  */
+            /* LAB3 CHALLENGE3   2313725 :  */
             /*(1)输出指令异常类型（ breakpoint）
              *(2)输出异常指令地址
              *(3)更新 tf->epc寄存器
             */
             cprintf("ebreak caught at 0x%08x\n", tf->epc);
             cprintf("Exception type: breakpoint\n");
-            {
-                uint16_t first_half = *(uint16_t *)tf->epc;
-                tf->epc += 4;
-            }
+            tf->epc += 4;
             break;
         case CAUSE_MISALIGNED_LOAD:
             break;
