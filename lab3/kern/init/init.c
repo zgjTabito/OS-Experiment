@@ -35,6 +35,14 @@ int kern_init(void) {
     clock_init();   // init clock interrupt
     intr_enable();  // enable irq interrupt
 
+        /* --- 测试：触发 ebreak 与 illegal-instruction (测试完成后请删除) --- */
+    cprintf(">>> test: trigger ebreak\n");
+    asm volatile("ebreak");
+
+    cprintf(">>> test: trigger illegal instruction\n");
+    /* 0x00000000 通常不是有效指令，会产生 Illegal instruction */
+    asm volatile(".word 0x00000000");
+
     /* do nothing */
     while (1)
         ;
