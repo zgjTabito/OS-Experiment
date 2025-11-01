@@ -132,24 +132,17 @@ void interrupt_handler(struct trapframe *tf) {
             * (4)判断打印次数，当打印次数为10时，调用<sbi.h>中的关机函数关机
             */
             {
-            /* 处理超级模式时钟中断：
-             * (1) 设置下次时钟中断
-             * (2) 累加计数器
-             * (3) 每达到 TICK_NUM 次调用 print_ticks()
-             * (4) 当打印次数达到 10 次时调用 shut_down() 关机
-             */
-            clock_set_next_event();
-            static int ticks = 0;
-            static int printed = 0;
-            ticks++;
-            if (ticks % TICK_NUM == 0) {
-                print_ticks();
-                printed++;
-                if (printed >= 10) {
-                    sbi_shutdown();
+                static int printed = 0;
+                clock_set_next_event();//发生这次时钟中断的时候，我们要设置下一次时钟中断
+                if (++ticks % TICK_NUM == 0) {
+                    print_ticks();
+                    printed++;
+                    if (printed >= 10) {
+                        sbi_shutdown();
+                    }
                 }
+                break;
             }
-            break;
         }
         case IRQ_H_TIMER:
             cprintf("Hypervisor software interrupt\n");
