@@ -104,6 +104,18 @@ alloc_proc(void)
          *       uint32_t flags;                             // Process flag
          *       char name[PROC_NAME_LEN + 1];               // Process name
          */
+        proc->state = PROC_UNINIT;              // Process state: uninitialized
+        proc->pid = -1;                         // Process ID: invalid
+        proc->runs = 0;                         // Running times: 0
+        proc->kstack = 0;                       // Kernel stack address: NULL
+        proc->need_resched = 0;                 // Need reschedule: false
+        proc->parent = NULL;                    // Parent process: NULL
+        proc->mm = NULL;                        // Memory management: NULL
+        memset(&(proc->context), 0, sizeof(struct context));  // Context: all zeros
+        proc->tf = NULL;                        // Trap frame: NULL
+        proc->pgdir = 0;                        // Page directory base: 0
+        proc->flags = 0;                        // Process flags: 0
+        memset(proc->name, 0, PROC_NAME_LEN + 1);  // Process name: empty
         
     }
     return proc;
@@ -184,6 +196,23 @@ void proc_run(struct proc_struct *proc)
          *   lsatp():                   Modify the value of satp register
          *   switch_to():              Context switching between two processes
          */
+        bool intr_flag;
+        struct proc_struct *prev = current;
+        
+        // 1. 禁用中断
+        local_intr_save(intr_flag);
+        
+        // 2. 更新当前进程
+        current = proc;
+        
+        // 3. 切换页表到新进程的地址空间
+        lsatp(PADDR(proc->pgdir));
+        
+        // 4. 执行上下文切换
+        switch_to(&(prev->context), &(proc->context));
+        
+        // 5. 恢复中断（在 switch_to 返回后执行）
+        local_intr_restore(intr_flag);
 
     }
 }
@@ -322,6 +351,43 @@ int do_fork(uint32_t clone_flags, uintptr_t stack, struct trapframe *tf)
     //    5. insert proc_struct into hash_list && proc_list
     //    6. call wakeup_proc to make the new child process RUNNABLE
     //    7. set ret vaule using child proc's pid
+    // 1. 调用 alloc_proc 分配进程控制块
+    if ((proc = alloc_proc()) == NULL)
+    {
+        goto fork_out;
+    }
+
+    // 2. 为进程分配内核栈
+    if (setup_kstack(proc) != 0)
+    {
+        goto bad_fork_cleanup_proc;
+    }
+
+    // 3. 复制原进程的内存管理信息到新进程
+    if (copy_mm(clone_flags, proc) != 0)
+    {
+        goto bad_fork_cleanup_kstack;
+    }
+
+    // 4. 复制原进程上下文到新进程
+    copy_thread(proc, stack, tf);
+
+    // 5. 将新进程添加到进程列表
+    bool intr_flag;
+    local_intr_save(intr_flag);
+    {
+        proc->pid = get_pid();
+        hash_proc(proc);
+        list_add(&proc_list, &(proc->list_link));
+        nr_process++;
+    }
+    local_intr_restore(intr_flag);
+
+    // 6. 唤醒新进程
+    wakeup_proc(proc);
+
+    // 7. 返回新进程号
+    ret = proc->pid;
     
 fork_out:
     return ret;
