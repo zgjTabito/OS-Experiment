@@ -116,7 +116,7 @@ void interrupt_handler(struct trapframe *tf)
         cprintf("User software interrupt\n");
         break;
     case IRQ_S_TIMER:
-        /* LAB5 GRADE   YOUR CODE :  */
+        /* LAB5 GRADE   2313725 :  */
         /* 时间片轮转： 
         *(1) 设置下一次时钟中断（clock_set_next_event）
         *(2) ticks 计数器自增
