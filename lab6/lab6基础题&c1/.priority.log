@@ -23,7 +23,7 @@ PMP1: 0x0000000000000000-0xffffffffffffffff (A,R,W,X)
 
 Special kernel symbols:
   entry  0xc020004a (virtual)
-  etext  0xc0205cc0 (virtual)
+  etext  0xc02058d2 (virtual)
   edata  0xc02c2600 (virtual)
   end    0xc02c6ae0 (virtual)
 Kernel executable memory footprint: 795KB
@@ -46,7 +46,8 @@ use SLOB allocator
 kmalloc_init() succeeded!
 check_vma_struct() succeeded!
 check_vmm() succeeded.
-sched class: stride_scheduler
+RR_init called
+sched class: RR_scheduler
 proc_init start
 proc_init: init_main pid=1
 ++ setup timer interrupts
@@ -54,27 +55,27 @@ user_main start
 kernel_execve: pid = 2, name = "priority".
 set priority to 6
 main: fork ok,now need to wait pids.
-set priority to 5
-set priority to 4
-set priority to 3
-set priority to 2
 set priority to 1
+set priority to 2
+set priority to 3
+set priority to 4
+set priority to 5
 100 ticks
 End of Test.
 100 ticks
 End of Test.
-child pid 7, acc 1416000, time 2010
-child pid 6, acc 1156000, time 2010
-child pid 5, acc 928000, time 2010
-child pid 4, acc 696000, time 2010
-child pid 3, acc 468000, time 2010
-main: pid 3, acc 468000, time 2010
-main: pid 4, acc 696000, time 2020
-main: pid 5, acc 928000, time 2020
-main: pid 6, acc 1156000, time 2020
-main: pid 7, acc 1416000, time 2020
+child pid 3, acc 960000, time 2010
+child pid 4, acc 944000, time 2010
+child pid 5, acc 948000, time 2010
+child pid 6, acc 948000, time 2010
+child pid 7, acc 948000, time 2010
+main: pid 3, acc 960000, time 2010
+main: pid 4, acc 944000, time 2010
+main: pid 5, acc 948000, time 2010
+main: pid 6, acc 948000, time 2010
+main: pid 7, acc 948000, time 2010
 main: wait pids over
-sched result: 1 1 2 2 3
+sched result: 1 1 1 1 1
 all user-mode processes have quit.
 init check memory pass.
 kernel panic at kern/process/proc.c:542:

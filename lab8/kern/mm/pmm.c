@@ -482,6 +482,13 @@ int copy_range(pde_t *to, pde_t *from, uintptr_t start, uintptr_t end,
              */
             
             assert(ret == 0);
+            void *src_kvaddr = page2kva(page); // (1) Source kernel virtual address
+            void *dst_kvaddr = page2kva(npage); // (2) Destination kernel virtual address
+            memcpy(dst_kvaddr, src_kvaddr, PGSIZE); // (3) Copy memory
+            ret = page_insert(to, npage, start, perm); // (4) Map physical address of npage to linear address start
+            if (ret != 0) {
+                return ret;
+            }
         }
         start += PGSIZE;
     } while (start != 0 && start < end);
